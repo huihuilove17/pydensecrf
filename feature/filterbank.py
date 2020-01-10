@@ -3,7 +3,6 @@ Convolution filter bank
 '''
 #from skimage.io import imread
 #from skimage.io import imshow
-#from skimage.color import rgb2lab
 #import matplotlib.pyplot as plt
 
 import numpy as np
@@ -158,7 +157,6 @@ if __name__ == "__main__":
     
     file = '~/Documents/pydensecrf/data/msrc/Images/8_30_s.bmp'
     image = imread(file)
-    image1 = rgb2lab(image)
 
     g1 = GaussianKernel(3)
     dg1 = GaussianDerivativeKernel(2*1)
