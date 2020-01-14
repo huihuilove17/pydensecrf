@@ -5,6 +5,23 @@ implement texton data and textonboost classifier
 import numpy as np
 import random
 
+def make_order(x1,x2):
+    """make sure x1 > x2
+    
+    Arguments:
+        x1 {[type]} -- [description]
+        x2 {[type]} -- [description]
+    
+    Returns:
+        [type] -- [description]
+    """
+    if x1 < x2:
+        tmp = x2
+        x2 = x1
+        x1 = tmp
+    return x1,x2
+
+
 def gauss(stddev):
     """following the original c code
     
@@ -34,7 +51,7 @@ class textonData(object):
     Arguments:
         object {[type]} -- [description]
     """
-    def __init__(self,image,i,j):
+    def __init__(self,image):
         """initialize some variables
         
         Arguments:
@@ -42,14 +59,11 @@ class textonData(object):
             i {int} -- [image col id]
             j {int} -- [image row id]
         """
-        self.j_ =  j
-        self.i_ = i
         self.image = image
         
-    
-    def value(self,x1,y1,x2,y2,t):
+    def value(self,i,j,x1,y1,x2,y2,t):
         """compute v[r,t](i)
-           let x stands for rows(vertical direction), y stands for cols(horizontal direction)
+           let x and j stands for rows(vertical direction), y and i stands for cols(horizontal direction)
            assume x1,y1 is the below right corner of the rectangle
                   x2, y2 is the upper left corner 
         
@@ -62,32 +76,29 @@ class textonData(object):
 
         """
         #making right order
-        if x2 > x1:
-            tmp = x1
-            x1 = x2
-            x2 = tmp
-        if y2 > y1:
-            tmp = y1
-            y1 = y2 
-            y2 = tmp
+        x1, x2 = make_order(x1,x2)
+        y1, y2 = make_order(y1,y2)
 
         hegiht,width,_ = self.image.shape
-        x1 += self.j_
-        x2 += self.j_
-        y1 += self.i_
-        y2 += self.i_
+        x1 += j
+        x2 += j
+        y1 += i
+        y2 += i
 
         #checking boundary condition
         if x2 < 0: x2 = 0
         if y2 < 0: y2 = 0
-        if x1 >= hegiht: x1 = hegiht
-        if y1 >= width: y1 = width
+        if x1 >= hegiht: x1 = hegiht-1
+        if y1 >= width: y1 = width-1
 
         tmp = image[x2:x1+1,y2:y1+1] == t
         tmp *= 1
         return np.sum(tmp)
 
 
+
+#===========================================================================
+# define weak classifier
 
 class textonClassifier(object):
     """class object for textonboost calssifier(waek classifier)
@@ -105,7 +116,7 @@ class textonClassifier(object):
         self.y2 = None
         
         
-    def set_threshold(self,t)
+    def set_threshold(self,t):
         self.threshold = t
 
     def random_pick(self):
@@ -126,8 +137,79 @@ class textonClassifier(object):
         self.x1 = x2 + h
         self.y1 = y2 + w
 
+        # randomly pick a texton
+        self.t = random.randint(0,400)
+
+
+    #==================================================================================
+    # training
+    def value_at_pixel(self,textondata,i,j):
+        """ evaluate v[r,t] at single pixel
+        
+        Arguments:
+            textondata {[type]} -- [description]
+        
+        Returns:
+            [bool] -- [description]
+        """
+        return textondata.value(i,j,self.x1,self.y1,self.x2,self.y2,self.t)
+
+    def value_at_image(self,image):
+        height, width = image.shape
+        textondata = textonData(image)
+        res = np.zeros((height,width))
+
+
+        for j in range(height):
+            for i in range(width):
+                res[j,i] = self.value_at_pixel(textondata,i,j)
+        
+        return res
+
+    # train all the texton map(images)
+    def train(self,texton_maps,gt_images,n_rounds,min_recSize,max_recSIze):
+        """[summary]
+        """
+        self.min_recSize = min_recSize
+        self.max_recSIze = max_recSIze
+
         
 
+
+
+
+    #==================================================================================
+    # testing
+    def classify_at_pixel(self,test_textondata,i,j):
+        """evaluate a test image at a single pixel, use already trained parameters
+        
+        Arguments:
+            test_textondata {[type]} -- [description]
+        
+        Returns:
+            [type] -- [description]
+        """
+        return self.value_at_pixel(test_textondata,i,j) > self.t
+
+
+    def classify_at_image(self,image):
+        """evaluate a test image at full resolution, use already trained parameters
+        
+        Arguments:
+            image {[type]} -- [description]
+        """
+        height, width = image.shape
+        textondata = textonData(image)
+        res = np.zeros((height,width))
+
+
+        for j in range(height):
+            for i in range(width):
+                res[j,i] = self.value_at_pixel(textondata,i,j)
+
+        return res
+
+    
 
 
 class textonboost(object):

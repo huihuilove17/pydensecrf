@@ -11,6 +11,9 @@ from feature.filterbank import FilterBank
 import os
 from sklearn.cluster import KMeans
 from uti.loadimages import loadimages
+from tqdm import tqdm
+import random
+
 
 #===============================================================================
 
@@ -27,11 +30,22 @@ def texton_visualize(lab_image,KMeans):
 
 #===============================================================================
 class Texton(object):
-    def __init__(self):
+    """class object for texton
+    
+    Arguments:
+        object {[type]} -- [description]
+    """
+    def __init__(self,feature):
+        """initialization 
+        
+        Arguments:
+            feature {feature class object} -- class object
+        """
+        self.feature_ = feature
         self.ntrain = 0  # number of training pixels
         self.ntest = 0 
-        self.mean = None  # store the mean for the training sample data(portion of training data)
-        self.transformation = None # store the covariance for the training sample data(portion of training data)
+        self.mean_ = None  # store the mean for the training sample data(portion of training data)
+        self.transformation_ = None # store the covariance for the training sample data(portion of training data)
         self.trainTID = None
         self.testTID = None
         self.sampleFeaturesIDX = [] # list of feature response(17d vector) id for portion of training data
@@ -39,44 +53,39 @@ class Texton(object):
         self.test_allFeatures = []
         self.Kmeans = None
         self.samples_per_image = None
-        self.nclass = None 
-        self.nTextons = None
         self.train_filenames= None
         self.test_filenames = None
         self.feature = None
 
-    def computeTrain(self,images,feature,nTextons,samples_per_image = 200): 
-        """compute texton for training images
+    def computeFeature(self,images): 
+        """ compute mean and variance for feature response of training images
         
         Arguments:
             images {list of np.array} -- list of input images
-            feature {feature class} -- 
-            nTextons {int} -- number of texton
         
         Keyword Arguments:
-            samples_per_image {int} -- number of sample pixels (default: {200})
-            if_sample {bool} -- [description] (default: {True})
-            if_train {bool} -- [description] (default: {True})
+            samples_per_image {int} -- [description] (default: {200})
+        
+        Returns:
+            [type] -- [description]
         """
-        self.feature = feature
-        self.featureSize = feature.getSize()
-        self.samples_per_image = samples_per_image
+        
+        D = self.feature.getSize()
         round = 0
-        D = feature.getSize()
         all_features = []
-        sampleFeaturesIDX = []
-        # training
-        cnt = 0
+        sample_features_id = []
         mean = np.zeros(D)
         covariance = np.zeros((D,D))
+        cnt = 0
+        
+        
         # itearte through training images
-        for image in images:
+        for round in tqdm(range(len(images)):
             print('processing training image %i'%round)
-            feature_response = feature.evaluate_an_image(image) #compute feature response at full resolution
-            # iterate at full resolution
-            height = feature_response.shape[1] # input image's rows
-            width = feature_response.shape[2]  # inut image's cols
-            npixels = round * height * width
+            feature_response = feature.evaluate_an_image(images[round]) # feature_size x height x width
+            _, height, width = feature_response.shape
+
+            # iteratively computes mean and covariance
             for j in range(height):
                 for i in range(width):
                     x = feature_response[:,j,i]
@@ -85,43 +94,31 @@ class Texton(object):
                     mean += delta/cnt
                     covariance += delta.reshape((len(x),1)) * (x-mean)
                     all_features.append(x)
-            # random pick 
-            num = 0
-            while num < samples_per_image:
-                x_rand = randint(0,width-1)
-                y_rand = randint(0,height-1)
-                idx = npixels + y_rand*width + x_rand
-                if idx not in sampleFeaturesIDX: 
-                    sampleFeaturesIDX.append(idx) # absolute index in all features
-                    num += 1
-                else:
-                    continue
 
-            round += 1
 
         covariance = covariance/cnt
         U, Lambda, _ = np.linalg.svd(covariance)
-        self.sampleFeaturesIDX = sampleFeaturesIDX
-        self.transformation = np.dot(np.diag(1.0 / np.sqrt(Lambda + 1e-5)),U.T)
         self.mean = mean
-        self.height = height # assume all the images have the same shape
-        self.width = width
-        self.train_allFeatures = all_features
+        self.transformation = np.dot(np.diag(1.0 / np.sqrt(Lambda + 1e-5)),U.T)
 
-    def fit_train(self,training_names,feature,nTextons,sample= True):
-        """loading training pixels. Perform sampling and whitening
-            use portion of training pixels to train, but save all the feature responses in the training images
+        return all_features
+
+
+    def fit_(self,names,feature,nTextons,samples_per_image,sample= True):
+        """fit in training images
         
         Arguments:
-            training_names {list of strings}-- [list of filenames of trainging images]
-            training_label_path {txt file}-- [storing the true labels for training images]
-            feature {class object} -- [compute the feature response]
+            names {list of strs} -- list of training names
+            feature {[type]} -- [description]
+            nTextons {[type]} -- [description]
+        
+        Keyword Arguments:
+            sample {bool} -- [description] (default: {True})
         """
-        # loading training images and the true labels
-        self.ntrain = len(training_names)
-        self.train_filenames = training_names
 
-        ims = loadimages(training_names)
+        # loading training images and the true labels
+        ntrain = len(names)
+        ims = loadimages(names)
         train_ims = ims[1]
 
         self.computeTrain(train_ims,feature,nTextons,samples_per_image = 200)
