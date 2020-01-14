@@ -7,13 +7,15 @@ import matplotlib.pyplot as plt
 from skimage.io import imread
 from skimage.io import imshow
 from skimage.color import rgb2lab
-from feature import filterbank
+from feature.filterbank import FilterBank
 import os
 from sklearn.cluster import KMeans
 from uti.loadimages import loadimages
+from tqdm import tqdm
+import random
+
 
 #===============================================================================
-#@profile
 
 def texton_visualize(lab_image,KMeans):
     nclusters = KMeans.cluster_centers_.shape[0]
@@ -28,104 +30,105 @@ def texton_visualize(lab_image,KMeans):
 
 #===============================================================================
 class Texton(object):
-    def __init__(self):
+    """class object for texton
+    
+    Arguments:
+        object {[type]} -- [description]
+    """
+    def __init__(self,feature):
+        """initialization 
+        
+        Arguments:
+            feature {feature class object} -- class object
+        """
+        self.feature_ = feature
         self.ntrain = 0  # number of training pixels
         self.ntest = 0 
-        self.mean = None  # store the mean for the training sample data(portion of training data)
+        self.mean_ = None  # store the mean for the training sample data(portion of training data)
         self.transformation_ = None # store the covariance for the training sample data(portion of training data)
         self.trainTID = None
         self.testTID = None
         self.sampleFeaturesIDX = [] # list of feature response(17d vector) id for portion of training data
-        self.allFeatures = [] # list of feature response(17d vector) for 
+        self.train_allFeatures = [] # list of feature response(17d vector) for 
+        self.test_allFeatures = []
         self.Kmeans = None
         self.samples_per_image = None
-        self.nclass = None 
-        self.nTextons = None
         self.train_filenames= None
         self.test_filenames = None
         self.feature = None
 
-    def computeFeature(self,images,feature,nTextons,samples_per_image = 200, if_train=True):
-        """compute texton for training images
+    def computeFeature(self,images): 
+        """ compute mean and variance for feature response of training images
         
         Arguments:
             images {list of np.array} -- list of input images
-            feature {feature class} -- 
-            nTextons {int} -- number of texton
         
         Keyword Arguments:
-            samples_per_image {int} -- number of sample pixels (default: {200})
-            if_sample {bool} -- [description] (default: {True})
-            if_train {bool} -- [description] (default: {True})
+            samples_per_image {int} -- [description] (default: {200})
+        
+        Returns:
+            [type] -- [description]
         """
-        self.feature = feature
-        self.featureSize = feature.getSize()
-        self.samples_per_image = samples_per_image
-        self.ntrain = len(images)
+        
+        D = self.feature.getSize()
         round = 0
         all_features = []
-        sampleFeaturesIDX = []
-        # training
-        if if_train:
-            cnt = 0
-            for image in images:
-                print('processing training image %i'%round)
-                feature_response = filter.evaluate_an_image(image) #compute feature response at full resolution
-                # iterate at full resolution
-                height = feature_response.shape[1] # input image's rows
-                width = feature_response.shape[2]  # inut image's cols
-                npixels = round * height * width
-                for j in range(height):
-                    for i in range(width):
-                        x = feature_response[:,j,i]
-                        cnt += 1
-                        delta = x - mean
-                        mean += delta/cnt
-                        covariance += delta.reshape((len(x),1)) * (x-mean)
-                        all_features.append(x)
-                # random pick 
-                num = 0
-                while num < samples_per_image:
-                    x_rand = randint(0,width-1)
-                    y_rand = randint(0,height-1)
-                    idx = npixels + y_rand*width + x_rand
-                    if idx not in sampleFeaturesIDX: 
-                        sampleFeaturesIDX.append(idx) # absolute index in all features
-                        num += 1
-                    else:
-                        continue
-
-                round += 1
-
-            covariance = covariance/cnt
-            U, Lambda, _ = np.linalg.svd(covariance)
-            self.sampleFeaturesIDX = sampleFeaturesIDX
-
-
-        self.transformation = np.dot(U, np.dot(np.diag(1.0 / np.sqrt(Lambda + 1e-5)),U.T))
-        self.mean = mean
-        self.allFeatures = all_features
+        sample_features_id = []
+        mean = np.zeros(D)
+        covariance = np.zeros((D,D))
+        cnt = 0
         
+        
+        # itearte through training images
+        for round in tqdm(range(len(images)):
+            print('processing training image %i'%round)
+            feature_response = feature.evaluate_an_image(images[round]) # feature_size x height x width
+            _, height, width = feature_response.shape
 
-    def fit_train(self,training_path,feature,nTextons,sample= True):
-        """loading training pixels. Perform sampling and whitening
-            use portion of training pixels to train, but save all the feature responses in the training images
+            # iteratively computes mean and covariance
+            for j in range(height):
+                for i in range(width):
+                    x = feature_response[:,j,i]
+                    cnt += 1
+                    delta = x - mean
+                    mean += delta/cnt
+                    covariance += delta.reshape((len(x),1)) * (x-mean)
+                    all_features.append(x)
+
+
+        covariance = covariance/cnt
+        U, Lambda, _ = np.linalg.svd(covariance)
+        self.mean = mean
+        self.transformation = np.dot(np.diag(1.0 / np.sqrt(Lambda + 1e-5)),U.T)
+
+        return all_features
+
+
+    def fit_(self,names,feature,nTextons,samples_per_image,sample= True):
+        """fit in training images
         
         Arguments:
-            training_path {txt file}-- [storing the filenames for training images]
-            training_label_path {txt file}-- [storing the true labels for training images]
-            feature {class object} -- [compute the feature response]
+            names {list of strs} -- list of training names
+            feature {[type]} -- [description]
+            nTextons {[type]} -- [description]
+        
+        Keyword Arguments:
+            sample {bool} -- [description] (default: {True})
         """
+
         # loading training images and the true labels
-        train_ims, gt_ims, id_ims, id_to_color = loadimages(training_path)
-        computeFeature(train_ims,feature,nTextons,samples_per_image = 200, if_sample=sample) 
+        ntrain = len(names)
+        ims = loadimages(names)
+        train_ims = ims[1]
+
+        self.computeTrain(train_ims,feature,nTextons,samples_per_image = 200)
         samples_per_image = self.samples_per_image
 
-        remainX_id = [ele for ele in range(len(self.allFeatures)) if ele not in self.sampleFeaturesIDX]
+        remainX_id = [ele for ele in range(len(self.train_allFeatures)) if ele not in self.sampleFeaturesIDX]
                 
         # whitening
-        X_mean = np.array(self.allFeatures) - self.mean
-        X_white = np.doc(X_mean,self.transformation.T)
+        X_mean = np.array(self.train_allFeatures) - self.mean
+        X_white = np.dot(X_mean,self.transformation.T)
 
         # clustering using sample X
         kmeans = KMeans(n_clusters=nTextons,random_state=0,algorithm='elkan').fit(X_mean[self.sampleFeaturesIDX,:])
@@ -136,57 +139,63 @@ class Texton(object):
 
         # combine 
         lis = list(zip(self.sampleFeaturesIDX,sampleX_TID)) + list(zip(remainX_id,remainX_TID))
-        lis = sorted(lis,lambda x: x[0])
+        lis.sort(key=lambda x: x[0])
+        trainTID = [ele[1] for ele in lis]
 
-        self.trainTID = np.array(lis).reshape()
-        self.train_filenames = training_path
+        self.trainTID = np.array(trainTID).reshape((self.ntrain,self.height,self.width))
+        self.train_filenames = training_names
+        self.Kmeans = kmeans
 
-    def evaluate(self,testing_path):
+    def evaluate(self,testing_names):
+        """compute textons for testing images
         
-        test_ims, gt_ims, id_ims, id_to_color = loadimages(testing_path)
-        all_features = []
-
-        for i,im in enumerate(test_ims):
+        Arguments:
+            testing_names{list of str} -- [list of names for testing images]
+        """
+        self.test_filenames = testing_names
+        self.ntest = len(testing_names)
         
-            print('processing test image %i'%i)
+        ims = loadimages(testing_names)
+        test_ims = ims[1]
+        test_all_features = []
+
+        # iterate through images
+        for round,im in enumerate(test_ims):
+            print('processing test image %i'%round)
             feature_response = self.feature.evaluate_an_image(im) #compute feature response at full resolution
-            D = self.
             # iterate at full resolution
             height = feature_response.shape[1] # input image's rows
             width = feature_response.shape[2]  # inut image's cols
             
-            
             for j in range(height):
                 for i in range(width):
                     x = feature_response[:,j,i]
-                    cnt += 1
-                    delta = x - mean
-                    mean += delta/cnt
-                    covariance += delta.reshape((len(x),1)) * (x-mean)
-                    all_features.append(x)
+                    test_all_features.append(x)
 
-            covariance = covariance/cnt
-            U, Lambda, _ = np.linalg.svd(covariance)
-            self.sampleFeaturesIDX = sampleFeaturesIDX
+        all_features = np.array(test_all_features)
+        all_features_white = np.dot(all_features-self.mean,self.transformation.T)
 
+        test_TID = self.Kmeans.predict(all_features_white)
 
-        self.transformation = np.dot(U, np.dot(np.diag(1.0 / np.sqrt(Lambda + 1e-5)),U.T))
-        self.mean = mean
-        self.allFeatures = all_features
+        self.testTID = test_TID.reshape(self.ntest,height,width)
  
-
-
-
-
 
     def saveTextons(self,saving_path):
         """should save each pixel as textondata
-        what to save?
-            
         
         Arguments:
             saving_path {[type]} -- [description]
-        """     
+        """
+        # saving train textons     
+        for i, name in enumerate(self.train_filenames):
+            data = self.trainTID
+            save_name = os.path.join(os.getcwd(),'texton/train/') + name + '.npy' 
+            np.save(save_name,data)
+    
+        for i, name in enumerate(self.test_filenames):
+            data = self.testTID
+            save_name = os.path.join(os.getcwd(),'texton/test/') + name + '.npy' 
+            np.save(save_name,data)
 
 
 
@@ -195,26 +204,34 @@ class Texton(object):
 
 
 
+
+
+
 if __name__ == '__main__':
 
     train_path = '/home/hanhui/Documents/pydensecrf/data/Train.txt'
+    test_path  = '/home/hanhui/Documents/pydensecrf/data/Test.txt'
+    train_names = []
+    test_names = []
+
     with open(train_path,'r') as fi:
         image_files = fi.readlines()
 
-    image_files = [ele.strip('\n') for ele in image_files]
-    images = []
-    lab_images = []
-    textons = []
+    train_names = [ele.strip('\n') for ele in image_files][:3]
 
-    for i in range(3):
-        path = os.path.join('~/Documents/pydensecrf/data/msrc/Images',image_files[i])
-        image = imread(path)
-        lab_image = rgb2lab(image)
-        images.append(image)
-        lab_images.append(lab_image)
+    with open(test_path,'r') as fi:
+        image_files = fi.readlines()
 
-    print('start training!') 
-    filter = filterbank.FilterBank(15)
-    kmeans = computeFeature(lab_images,filter,4)
+    test_names = [ele.strip('\n') for ele in image_files][:3]
 
-    #texton_visualize(lab_images,kmeans)
+    texton = Texton()
+    feature = FilterBank(5)
+    nTextons = 400
+    texton.fit_train(train_names,feature,nTextons)
+    texton.evaluate(test_names)
+    texton.saveTextons('/home/hanhui/Documents/pydensecrf/texton')
+
+
+
+
+
