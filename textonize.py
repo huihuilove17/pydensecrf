@@ -2,7 +2,6 @@
 Textonize all the images 
 '''
 import numpy as np
-from random import randint
 import matplotlib.pyplot as plt
 from skimage.io import imread
 from skimage.io import imshow
@@ -104,7 +103,7 @@ class Texton(object):
         return all_features
 
 
-    def fit_(self,names,feature,nTextons,samples_per_image,sample= True):
+    def fit_(self,names,nTextons,samples_per_image,sample= True):
         """fit in training images
         
         Arguments:
@@ -119,19 +118,22 @@ class Texton(object):
         # loading training images and the true labels
         ntrain = len(names)
         ims = loadimages(names)
-        train_ims = ims[1]
+        train_ims = [ele.get('data') for ele in ims]
+        
+        # compute mean and variance
+        all_features = self.computeTrain(train_ims,self.feature,nTextons,samples_per_image)
 
-        self.computeTrain(train_ims,feature,nTextons,samples_per_image = 200)
-        samples_per_image = self.samples_per_image
+        # select portion of training data
+        sample_training = random.sample(range(0, len(all_features)), len(names)*samples_per_image)
 
-        remainX_id = [ele for ele in range(len(self.train_allFeatures)) if ele not in self.sampleFeaturesIDX]
+        #remainX_id = [ele for ele in range(len(self.train_allFeatures)) if ele not in self.sampleFeaturesIDX]
                 
         # whitening
-        X_mean = np.array(self.train_allFeatures) - self.mean
+        X_mean = np.array(all_Features) - self.mean
         X_white = np.dot(X_mean,self.transformation.T)
 
         # clustering using sample X
-        kmeans = KMeans(n_clusters=nTextons,random_state=0,algorithm='elkan').fit(X_mean[self.sampleFeaturesIDX,:])
+        kmeans = KMeans(n_clusters=nTextons,random_state=0,algorithm='elkan').fit(X_mean[sample_training,:])
 
         # evaluate remaining training pixels
         remainX_TID = kmeans.predict(X_mean[remainX_id,:])
