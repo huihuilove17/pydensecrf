@@ -40,7 +40,6 @@ def init_msrc():
 
 
 
-
 class Image(object):
     """class object for image
     
@@ -73,9 +72,6 @@ class Image(object):
 
 
 
-
-
-
 def loadImage(names):
     """loading images
     
@@ -89,7 +85,7 @@ def loadImage(names):
     for ele in names:
         image_path = os.path.join('/home/hanhui/Documents/pydensecrf/data/msrc/Images',ele)
         im = imread(image_path)
-        res.append(Image(name,im))
+        res.append(im)
 
     return res
 
@@ -104,14 +100,14 @@ def rgb2labs(ims):
     """
     res = []
     for im in ims:
-        lab_im = rgb2lab(im.get('data'))
-        res.append(Image(im.get('name'),lab_im))
+        lab_im = rgb2lab(im)
+        res.append(lab_im)
 
     return res
 
 
 def loadLabelImage(names):
-    """loading ground truth image 
+    """loading ground truth image of size height * width 
     
     Arguments:
         names {[type]} -- [description]
