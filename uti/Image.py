@@ -1,6 +1,7 @@
 '''
 convert rgb image to lab image
 '''
+
 import numpy as np
 from skimage.io import imread
 from skimage.color import rgb2lab
@@ -38,6 +39,9 @@ def init_msrc():
 
     return color_to_id
 
+=======
+
+
 
 
 class Image(object):
@@ -53,12 +57,17 @@ class Image(object):
         self.depth_ = im.shape[2] 
         self.data_ = im
     
+
     def get(self,op_name):
+=======
+
+
         """return different dimension for an image 
         
         Arguments:
             op_name {str} -- 'h','d','w','data'
         """
+
         if op_name == 'height':
             return self.height_
         elif op_name == 'width':
@@ -72,7 +81,9 @@ class Image(object):
 
 
 
+
 def loadImage(names):
+
     """loading images
     
     Arguments:
@@ -132,6 +143,10 @@ def loadLabelImage(names):
 
     return gts
     
+=======
+
+
+
 
 
 

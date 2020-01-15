@@ -55,20 +55,21 @@ def GaussianLaplacian(sigma):
  
     return res 
 
+
 #=================================================================
 #define operation
 # assume input kernel is of the form [[0,0,0],[-1,0,1],[0,0,0]] 
 #@profile
-def convolutionX(image,kernel,filling='reflect'):
+def convolutionX(image,kernel,filling):
 
     return fftconvolve(image,kernel,'same')
 
 
-def convolutionY(image,kernel,filling='reflect'):
+def convolutionY(image,kernel):
 
     return fftconvolve(image,kernel.T,'same')
 
-def convolutionXY(image,kernelX,kernelY,filling='reflect'):
+def convolutionXY(image,kernelX,kernelY):
     
     res = convolutionX(image,kernelX)
     res1 = convolutionY(res,kernelY)
@@ -103,10 +104,11 @@ class FilterBank(object):
         self.lg2 = GaussianLaplacian(2*kappa)
         self.lg3 = GaussianLaplacian(4*kappa)
         self.lg4 = GaussianLaplacian(8*kappa)
-        self.size = 17
+        self.size_ = 17
+        self.name_ = 'filterbank'
     
     def getSize(self):
-        return self.size
+        return self.size_
 
     # use kernprof to monitor the time 
     #@profile
@@ -149,6 +151,9 @@ class FilterBank(object):
 
         print('finishing convolution!')
         return np.array((i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15,i16,i17))
+    
+    def get_name(self):
+        return self.name_
     
 
 # testing
