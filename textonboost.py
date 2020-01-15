@@ -44,9 +44,11 @@ def gaussRange(stddev2):
             
 
 
+
+#===========================================================================
+# define textonData
 class textonData(object):
-    """ each image has a textonData class object, joinboost algorithm uses a list of textonData 
-    for training
+    """ class object 
     
     Arguments:
         object {[type]} -- [description]
@@ -97,9 +99,10 @@ class textonData(object):
 
 
 
+
+
 #===========================================================================
 # define weak classifier
-
 class textonClassifier(object):
     """class object for textonboost calssifier(waek classifier)
     
@@ -173,9 +176,7 @@ class textonClassifier(object):
         self.min_recSize = min_recSize
         self.max_recSIze = max_recSIze
 
-        
-
-
+    
 
 
     #==================================================================================
@@ -212,9 +213,24 @@ class textonClassifier(object):
     
 
 
-class textonboost(object):
+
+#===========================================================================
+class Textonboost(object):
     def __init__(self):
         pass
+
+
+    def train(self,textons,gts,n_rounds,n_classifiers,subsample,min_recSize,max_recSIze):
+        
+        # set up weak classifier
+
+
+        # compute subsampled integral images
+
+
+        # joinboost train the weak classifier
+
+
 
 
 
@@ -222,27 +238,17 @@ class textonboost(object):
 
 if __name__ == "__main__":
 
-    image = np.array([[1,0,1,1],[0,1,0,0],[1,0,1,1],[0,1,2,1]])
-    x1,y1,x2,y2 = 3,3,0,0
+    print('(train) Loading textons') # loading multiple types of textons, of the size height * width * depth
 
-    # compute region ll and lr
-    ii2 = np.zeros(2)
-    flag = 0 if y2 > 1 else 1
-    for j in range(x2,x1+1):
-        s_tmp = 0
-        # for each col
-        for i in range(y1+1):
-            val = 1 if image[j,i] == 1 else 0
-            s_tmp += val
-            # handling boundary case
-            if i == y2-1:
-                ii2[flag] += s_tmp
-                flag = 1
-            elif i == y1:
-                ii2[flag] += s_tmp
-                flag = 0
 
-    print(ii2)
-    print(ii2[1] - ii2[0]) 
 
- 
+
+
+    print('(train) Boosting')
+        
+
+    booster = Textonboost()
+    booster.train(textons, labels, n_rounds, n_classifiers, n_thresholds, subsample, min_rect_size, max_rect_size )
+    booster.save()
+
+    

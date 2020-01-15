@@ -2,7 +2,6 @@
 Textonize all the images 
 '''
 import numpy as np
-from random import randint
 import matplotlib.pyplot as plt
 from skimage.io import imread
 from skimage.io import imshow
@@ -48,13 +47,9 @@ class Texton(object):
         self.transformation_ = None # store the covariance for the training sample data(portion of training data)
         self.trainTID = None
         self.testTID = None
-        self.sampleFeaturesIDX = [] # list of feature response(17d vector) id for portion of training data
         self.train_allFeatures = [] # list of feature response(17d vector) for 
         self.test_allFeatures = []
-        self.Kmeans = None
-        self.samples_per_image = None
-        self.train_filenames= None
-        self.test_filenames = None
+        self.kmeans = None
         self.feature = None
 
     def computeFeature(self,images): 
@@ -77,14 +72,12 @@ class Texton(object):
         mean = np.zeros(D)
         covariance = np.zeros((D,D))
         cnt = 0
-        
+        height, width, _ = images[0].shape
         
         # itearte through training images
         for round in tqdm(range(len(images)):
             print('processing training image %i'%round)
-            feature_response = feature.evaluate_an_image(images[round]) # feature_size x height x width
-            _, height, width = feature_response.shape
-
+            feature_response = feature.evaluate_an_image(images[round]) # feature_size * height * width
             # iteratively computes mean and covariance
             for j in range(height):
                 for i in range(width):
@@ -104,7 +97,7 @@ class Texton(object):
         return all_features
 
 
-    def fit_(self,names,feature,nTextons,samples_per_image,sample= True):
+    def fit_(self,names,nTextons,samples_per_image,sample= True):
         """fit in training images
         
         Arguments:
@@ -119,83 +112,86 @@ class Texton(object):
         # loading training images and the true labels
         ntrain = len(names)
         ims = loadimages(names)
-        train_ims = ims[1]
+        height, width, _ = ims[0].shape
+        # compute mean and variance
+        all_features = self.computeTrain(ims)
 
-        self.computeTrain(train_ims,feature,nTextons,samples_per_image = 200)
-        samples_per_image = self.samples_per_image
+        # select portion of training data
+        sample_training = random.sample(range(0, len(all_features)), len(names)*samples_per_image)
 
-        remainX_id = [ele for ele in range(len(self.train_allFeatures)) if ele not in self.sampleFeaturesIDX]
+        remains = [ele for ele in range(len(all_features)) if ele not in sample_training]
                 
         # whitening
-        X_mean = np.array(self.train_allFeatures) - self.mean
+        X_mean = np.array(all_Features) - self.mean
         X_white = np.dot(X_mean,self.transformation.T)
 
         # clustering using sample X
-        kmeans = KMeans(n_clusters=nTextons,random_state=0,algorithm='elkan').fit(X_mean[self.sampleFeaturesIDX,:])
+        kmeans = KMeans(n_clusters=nTextons,random_state=0,algorithm='elkan').fit(X_mean[sample_training,:])
 
         # evaluate remaining training pixels
-        remainX_TID = kmeans.predict(X_mean[remainX_id,:])
+        remainX_TID = kmeans.predict(X_mean[remains,:])
         sampleX_TID = kmeans.labels_
 
         # combine 
-        lis = list(zip(self.sampleFeaturesIDX,sampleX_TID)) + list(zip(remainX_id,remainX_TID))
+        lis = list(zip(sample_training,sampleX_TID)) + list(zip(remains,remainX_TID))
         lis.sort(key=lambda x: x[0])
         trainTID = [ele[1] for ele in lis]
 
-        self.trainTID = np.array(trainTID).reshape((self.ntrain,self.height,self.width))
-        self.train_filenames = training_names
-        self.Kmeans = kmeans
+        self.trainTID = np.array(trainTID).reshape((ntrain,height,width))
+        self.kmeans = kmeans
 
-    def evaluate(self,testing_names):
+    def evaluate(self,names):
         """compute textons for testing images
         
         Arguments:
             testing_names{list of str} -- [list of names for testing images]
         """
-        self.test_filenames = testing_names
-        self.ntest = len(testing_names)
-        
-        ims = loadimages(testing_names)
-        test_ims = ims[1]
+        ntest = len(names)
+        ims = loadimages(names)
         test_all_features = []
-
+        height, width, _ = ims[0].shape
         # iterate through images
-        for round,im in enumerate(test_ims):
+        for round in tqdm(range(len(ims))):
             print('processing test image %i'%round)
-            feature_response = self.feature.evaluate_an_image(im) #compute feature response at full resolution
-            # iterate at full resolution
-            height = feature_response.shape[1] # input image's rows
-            width = feature_response.shape[2]  # inut image's cols
-            
+            im = ims[round]
+            feature_response = self.feature_.evaluate_an_image(im)            
             for j in range(height):
                 for i in range(width):
                     x = feature_response[:,j,i]
                     test_all_features.append(x)
 
-        all_features = np.array(test_all_features)
-        all_features_white = np.dot(all_features-self.mean,self.transformation.T)
+        test_all_features = np.array(test_all_features)
+        test_all_features_white = np.dot(test_all_features-self.mean,self.transformation.T)
 
-        test_TID = self.Kmeans.predict(all_features_white)
+        test_TID = self.kmeans.predict(test_all_features_white)
 
-        self.testTID = test_TID.reshape(self.ntest,height,width)
+        self.testTID = test_TID.reshape(ntest,height,width)
  
 
-    def saveTextons(self,saving_path):
+    def saveTextons(self,names,saving_path,mode='train'):
         """should save each pixel as textondata
         
         Arguments:
             saving_path {[type]} -- [description]
         """
-        # saving train textons     
-        for i, name in enumerate(self.train_filenames):
-            data = self.trainTID
-            save_name = os.path.join(os.getcwd(),'texton/train/') + name + '.npy' 
-            np.save(save_name,data)
-    
-        for i, name in enumerate(self.test_filenames):
-            data = self.testTID
-            save_name = os.path.join(os.getcwd(),'texton/test/') + name + '.npy' 
-            np.save(save_name,data)
+        # saving training images
+        if mode == 'train':
+            for i in range(len(names)):
+                dat = self.testTID[i]
+                save_name = os.path.join(os.getcwd(),'texton/train/') + names[i] + '.npy' 
+                np.save(save_name,dat)
+        
+        if mode == 'test':
+            for i in range(len(names)):
+                dat = self.testTID[i]
+                save_name = os.path.join(os.getcwd(),'texton/test/') + names[i] + '.npy' 
+                np.save(save_name,dat) 
+
+        if mode == 'valid':
+            for i in range(len(names)):
+                dat = self.testTID[i]
+                save_name = os.path.join(os.getcwd(),'texton/valid/') + names[i] + '.npy' 
+                np.save(save_name,dat)
 
 
 
