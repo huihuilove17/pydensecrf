@@ -13,3 +13,6 @@ class Color(object):
 
     def get_name(self):
         return self.name_
+    
+    def get_size(self):
+        return self.size_

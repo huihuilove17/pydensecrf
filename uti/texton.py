@@ -3,7 +3,10 @@ py file for texton class object
 '''
 import numpy as np
 import random
+from uti.Image import loadImages
 from tqdm import tqdm
+from sklearn.cluster import KMeans
+import os
 
 class Texton(object):
     """class object for texton
@@ -38,25 +41,23 @@ class Texton(object):
             [type] -- [description]
         """
         
-        D = self.feature.getSize()
+        D = self.feature_.get_size()
         round = 0
         all_features = []
-        sample_features_id = []
         mean = np.zeros(D)
         covariance = np.zeros((D,D))
         cnt = 0
 
-        
         # itearte through training images
-        for round in tqdm(range(len(images)):
-            print('processing training image %i'%round)
-            feature_response = feature.evaluate_an_image(images[round]) # feature_size x height x width
-            _, height, width = feature_response.shape
+        for round in tqdm(range(len(images))):
+            #print('processing training image %i'%round)
+            feature_response = self.feature_.evaluate_an_image(images[round]) # feature_size x height x width
+            height, width,_ = feature_response.shape
 
             # iteratively computes mean and covariance
             for j in range(height):
                 for i in range(width):
-                    x = feature_response[:,j,i]
+                    x = feature_response[j,i,:]
                     cnt += 1
                     delta = x - mean
                     mean += delta/cnt
@@ -72,12 +73,15 @@ class Texton(object):
         return all_features
 
 
-    def fit_(self,names,feature,nTextons,samples_per_image,sample= True):
+    def fit_(self,names,nTextons,samples_per_image):
 
-
+        # loading training images
+        ims = loadImages(names)
         height, width, _ = ims[0].shape
+        ntrain = len(names)
+
         # compute mean and variance
-        all_features = self.computeTrain(ims)
+        all_features = self.computeFeature(ims)
 
         # select portion of training data
         sample_training = random.sample(range(0, len(all_features)), len(names)*samples_per_image)
@@ -85,18 +89,17 @@ class Texton(object):
         remains = [ele for ele in range(len(all_features)) if ele not in sample_training]
                 
         # whitening
-        X_mean = np.array(all_Features) - self.mean
+        X_mean = np.array(all_features) - self.mean
         X_white = np.dot(X_mean,self.transformation.T)
 
         # clustering using sample X
-        kmeans = KMeans(n_clusters=nTextons,random_state=0,algorithm='elkan').fit(X_mean[sample_training,:])
+        kmeans = KMeans(n_clusters=nTextons,random_state=0,algorithm='elkan').fit(X_white[sample_training,:])
 
         # evaluate remaining training pixels
-        remainX_TID = kmeans.predict(X_mean[remains,:])
+        remainX_TID = kmeans.predict(X_white[remains,:])
         sampleX_TID = kmeans.labels_
 
         # combine 
-
         lis = list(zip(sample_training,sampleX_TID)) + list(zip(remains,remainX_TID))
         lis.sort(key=lambda x: x[0])
         trainTID = [ele[1] for ele in lis]
@@ -110,10 +113,12 @@ class Texton(object):
         Arguments:
             testing_names{list of str} -- [list of names for testing images]
         """
+        # loading test images
         ntest = len(names)
-        ims = loadimages(names)
+        ims = loadImages(names)
         test_all_features = []
         height, width, _ = ims[0].shape
+
         # iterate through images
         for round in tqdm(range(len(ims))):
             print('processing test image %i'%round)
@@ -122,7 +127,7 @@ class Texton(object):
 
             for j in range(height):
                 for i in range(width):
-                    x = feature_response[:,j,i]
+                    x = feature_response[j,i,:]
                     test_all_features.append(x)
 
 
@@ -134,14 +139,14 @@ class Texton(object):
         self.testTID = test_TID.reshape(ntest,height,width)
  
 
-    def saveTextons(self,names,saving_path,mode='train'):
+    def saveTextons(self,saving_path,mode = 'train'):
                           
         """should save each pixel as textondata
         
         Arguments:
             saving_path {[type]} -- [description]
         """
-        name = self.feature.get_name()
+        name = self.feature_.get_name() # get feature name
         # saving training images
         if mode == 'train':
             dat = self.trainTID
@@ -158,3 +163,5 @@ class Texton(object):
         pass
 
 
+if __name__ == '__main__':
+    pass

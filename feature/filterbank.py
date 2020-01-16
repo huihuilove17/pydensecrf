@@ -60,7 +60,7 @@ def GaussianLaplacian(sigma):
 #define operation
 # assume input kernel is of the form [[0,0,0],[-1,0,1],[0,0,0]] 
 #@profile
-def convolutionX(image,kernel,filling):
+def convolutionX(image,kernel):
 
     return fftconvolve(image,kernel,'same')
 
@@ -107,9 +107,12 @@ class FilterBank(object):
         self.size_ = 17
         self.name_ = 'filterbank'
     
-    def getSize(self):
+    def get_size(self):
         return self.size_
-
+    
+    def get_name(self):
+        return self.name_
+ 
     # use kernprof to monitor the time 
     #@profile
     def evaluate_an_image(self,lab_image):
@@ -149,39 +152,10 @@ class FilterBank(object):
         i16 = convoLog(L,self.lg3,self.g3)
         i17 = convoLog(L,self.lg4,self.g4)
 
-        print('finishing convolution!')
-        return np.array((i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15,i16,i17))
+        return np.dstack((i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15,i16,i17))
     
-    def get_name(self):
-        return self.name_
-    
+   
 
-# testing
-
-if __name__ == "__main__":
-    
-    file = '~/Documents/pydensecrf/data/msrc/Images/8_30_s.bmp'
-    image = imread(file)
-
-    g1 = GaussianKernel(3)
-    dg1 = GaussianDerivativeKernel(2*1)
-
-    height, width = image1.shape[0], image1.shape[1]  
-
-    L = getChannel(image1,0)
-    a = getChannel(image1,1)
-    b = getChannel(image1,2)
-
-    tmp = FilterBank(15)
-
-    '''
-    #res = tmp.evaluate_an_image(image1)
-    kernel1 = np.arange(100).reshape((10,10))
-    kernel2 = np.arange(225).reshape((15,15))
-    convolutionX(a,kernel1)
-    convolutionX(L,kernel2)
-    '''
-    res = tmp.evaluate_an_image(image1)
     
 
 
