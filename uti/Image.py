@@ -39,47 +39,6 @@ def init_msrc():
 
     return color_to_id
 
-=======
-
-
-
-
-class Image(object):
-    """class object for image
-    
-    Arguments:
-        object {[type]} -- [description]
-    """
-    def __init__(self,name,im):
-        self.name_ = name
-        self.height_ = im.shape[0]
-        self.width_ = im.shape[1]
-        self.depth_ = im.shape[2] 
-        self.data_ = im
-    
-
-    def get(self,op_name):
-=======
-
-
-        """return different dimension for an image 
-        
-        Arguments:
-            op_name {str} -- 'h','d','w','data'
-        """
-
-        if op_name == 'height':
-            return self.height_
-        elif op_name == 'width':
-            return self.width_
-        elif op_name == 'depth':
-            return self.depth_
-        elif op_name == 'data':
-            return self.data_
-        else:
-            return self.name
-
-
 
 
 def loadImage(names):
@@ -143,15 +102,9 @@ def loadLabelImage(names):
 
     return gts
     
-=======
 
 
-
-
-
-
-
-
+# for test
 if __name__ == "__main__":
     file = '~/Documents/course_in_cu/Postgraduate Course/image_segmentation/pydensecrf/data/msrc/8_30_s.bmp'
     image = imread(file)
