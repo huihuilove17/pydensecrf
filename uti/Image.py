@@ -6,6 +6,7 @@ import numpy as np
 from skimage.io import imread
 from skimage.color import rgb2lab
 from matplotlib import pyplot as plt
+import os
 
 
 def init_msrc():
@@ -41,7 +42,7 @@ def init_msrc():
 
 
 
-def loadImage(names):
+def loadImages(names):
 
     """loading images
     
