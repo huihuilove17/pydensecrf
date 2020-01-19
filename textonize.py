@@ -9,13 +9,14 @@ from feature.location import Location
 from feature.histogram import HoG
 
 
-
-
 if __name__ == '__main__':
 
+    # setting 
+    train_path = '/Users/huihuibullet/Documents/project/pydensecrf-1/data/Train.txt'
+    test_path  = '/Users/huihuibullet/Documents/project/pydensecrf-1/data/Test.txt'
+    save_path = '/Users/huihuibullet/Documents/project/pydensecrf-1/data/texton'
+    
     # get training and testing names
-    train_path = '/home/hanhui/Documents/pydensecrf/data/Train.txt'
-    test_path  = '/home/hanhui/Documents/pydensecrf/data/Test.txt'
     train_names = []
     test_names = []
 
@@ -31,19 +32,19 @@ if __name__ == '__main__':
 
     # training 
     print('start training!')
-    feature = FilterBank(5)
+    feature = HoG()
     nTextons = 400
     
     texton = Texton(feature)
     texton.fit_(train_names,nTextons,200)
-    texton.saveTextons('/home/hanhui/Documents/pydensecrf/texton')   
+    texton.saveTextons(save_path)   
     print('finish training!')
     
     
     # testing
     print('start testing') 
     texton.evaluate(test_names)
-    texton.saveTextons('/home/hanhui/Documents/pydensecrf/texton',mode='test')
+    texton.saveTextons(save_path,mode='test')
     print('finish testing')
 
 
