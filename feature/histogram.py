@@ -26,7 +26,7 @@ class HoG(object):
     def get_size(self):
         return self.size_
 
-    def evaluate_an_image(self,lab_im,level):
+    def evaluate_an_image(self,lab_im,level=0):
         """compute feature response at different level
         
         Arguments:
@@ -83,6 +83,7 @@ class HoG(object):
         @jit(nopython=True)
         def finalize():
             res = np.zeros((height,width,total_size))
+            # iterate through full resolution
             for j in range(height):
                 for i in range(width):
                     cid = 0
@@ -96,10 +97,17 @@ class HoG(object):
                             if ii >= width: ii = width-1
                             res[j,i,cid*nAngleBins:(cid+1)*nAngleBins] += cellBin[:,int(jj),int(ii)]
                             cid += 1
-        
+                    # normalize
+                    w = 1 / np.sqrt(np.sum(res[j,i,:] ** 2))
+                    res[j,i,:] = res[j,i,:] * w
+
             return res
 
         res = finalize()
+        # normalize
+
+
+        
         return res
 
 

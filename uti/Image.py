@@ -54,7 +54,7 @@ def loadImages(names):
     """
     res = []
     for ele in names:
-        image_path = os.path.join('/home/hanhui/Documents/pydensecrf/data/msrc/Images',ele)
+        image_path = os.path.join('/Users/huihuibullet/Documents/project/pydensecrf-1/data/msrc/Images',ele)
         im = imread(image_path)
         res.append(im)
 
@@ -88,10 +88,10 @@ def loadLabelImage(names):
     """
     gts = []
     color_map = init_msrc()
-    for name in names:
 
+    for name in names:
         str = name.split('.')[0]+'_GT.bmp'
-        image_path = os.path.join('/home/hanhui/Documents/pydensecrf/data/msrc/GroundTruth',str)
+        image_path = os.path.join('～/Documents/project/pydensecrf-1/data/msrc/GroundTruth',str)
         im = imread(image_path)
         height, width, _ = im.shape
         gt_im = np.zeros((height,width))
@@ -105,22 +105,7 @@ def loadLabelImage(names):
     
 
 
-# for test
-if __name__ == "__main__":
-    file = '~/Documents/course_in_cu/Postgraduate Course/image_segmentation/pydensecrf/data/msrc/8_30_s.bmp'
-    image = imread(file)
-    image1 = rgb2lab(image)
 
-    t1 = time.time()
-    conv_filter = FilterBank(400)
-    res = conv_filter.evaluate_an_image(image1)
-    t2 = time.time()
-
-    print("elapsed time for processing an image using filter bank: %s"%(t2-t1))
-    for i in range(17):
-        print("showing image %i"%i)
-        imshow(res[:,:,i]*255)
-        plt.show()
 
 
 
