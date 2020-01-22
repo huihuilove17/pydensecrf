@@ -22,7 +22,7 @@ def data_formulate(texton_path,names,texton_type):
     height, width, depth = train_textons[0].shape
 
     # reformulate the data 
-    big_X = np.zeros((len(train_textons)*height*width,depth))
+    big_X = np.zeros((len(train_textons)*height*width,depth)) # each row is an image 
     big_y = np.zeros(len(train_textons)*height*width)
 
     # slow loops
