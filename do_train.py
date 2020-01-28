@@ -1,10 +1,12 @@
 '''
 main file for training(already have textons)
+remain to add validation data
 '''
 
 import numpy as np
 from uti.loadtextons import loadtextons
 from uti.Image import loadLabelImage
+from uti.computeInt import computeInt
 from numba import njit
 
 #config
@@ -27,8 +29,7 @@ if __name__ == '__main__':
     train_labels = loadLabelImage(train_names) #list of images(size: height,width)
 
     # compute integral images
-        
-
+    textonsInt = computeInt(train_textons)
 
 
     # build random forest
