@@ -13,32 +13,33 @@ def init_msrc():
     """construct a color id map for ground truth images
     """
     color_to_id = dict()
-    color_to_id[np.array([128,0,0]).tobytes()] = 0
-    color_to_id[np.array([0,128,0]).tobytes()] = 1
-    color_to_id[np.array([128,128,0]).tobytes()] = 2 
-    color_to_id[np.array([0,0,128]).tobytes()] = 3
-    color_to_id[np.array([0,128,128]).tobytes()] = 4
-    color_to_id[np.array([128,128,128]).tobytes()] = 5
-    color_to_id[np.array([192,0,0]).tobytes()] = 6
-    color_to_id[np.array([64,128,0]).tobytes()] = 7
-    color_to_id[np.array([192,128,0]).tobytes()] = 8
-    color_to_id[np.array([64,0,128]).tobytes()] = 9
-    color_to_id[np.array([192,0,128]).tobytes()] = 10
-    color_to_id[np.array([64,128,128]).tobytes()] = 11
-    color_to_id[np.array([192,128,128]).tobytes()] = 12
-    color_to_id[np.array([0,64,0]).tobytes()] = 13
-    color_to_id[np.array([128,64,0]).tobytes()] = 14
-    color_to_id[np.array([0,192,0]).tobytes()] = 15
-    color_to_id[np.array([128,64,128]).tobytes()] = 16
-    color_to_id[np.array([0,192,128]).tobytes()] = 17
-    color_to_id[np.array([128,192,128]).tobytes()] = 18
-    color_to_id[np.array([64,64,0]).tobytes()] = 19
-    color_to_id[np.array([192,64,0]).tobytes()] = 20
-    color_to_id[np.array([0,0,0]).tobytes()] = -1
-    color_to_id[np.array([64,0,0]).tobytes()] = -2
-    color_to_id[np.array([128,0,128]).tobytes()] = -3
+    color_to_id[tuple(np.array([128,0,0]))] = 0
+    color_to_id[tuple(np.array([0,128,0]))] = 1
+    color_to_id[tuple(np.array([128,128,0]))] = 2 
+    color_to_id[tuple(np.array([0,0,128]))] = 3
+    color_to_id[tuple(np.array([0,128,128]))] = 4
+    color_to_id[tuple(np.array([128,128,128]))] = 5
+    color_to_id[tuple(np.array([192,0,0]))] = 6
+    color_to_id[tuple(np.array([64,128,0]))] = 7
+    color_to_id[tuple(np.array([192,128,0]))] = 8
+    color_to_id[tuple(np.array([64,0,128]))] = 9
+    color_to_id[tuple(np.array([192,0,128]))] = 10
+    color_to_id[tuple(np.array([64,128,128]))] = 11
+    color_to_id[tuple(np.array([192,128,128]))] = 12
+    color_to_id[tuple(np.array([0,64,0]))] = 13
+    color_to_id[tuple(np.array([128,64,0]))] = 14
+    color_to_id[tuple(np.array([0,192,0]))] = 15
+    color_to_id[tuple(np.array([128,64,128]))] = 16
+    color_to_id[tuple(np.array([0,192,128]))] = 17
+    color_to_id[tuple(np.array([128,192,128]))] = 18
+    color_to_id[tuple(np.array([64,64,0]))] = 19
+    color_to_id[tuple(np.array([192,64,0]))] = 20
+    color_to_id[tuple(np.array([0,0,0]))] = -1
+    color_to_id[tuple(np.array([64,0,0]))] = -2
+    color_to_id[tuple(np.array([128,0,128]))] = -3
 
     return color_to_id
+
 
 
 
@@ -91,15 +92,16 @@ def loadLabelImage(names):
 
     for name in names:
         str = name.split('.')[0]+'_GT.bmp'
-        image_path = os.path.join('～/Documents/project/pydensecrf-1/data/msrc/GroundTruth',str)
+        image_path = os.path.join('/Users/huihuibullet/Documents/project/pydensecrf-1/data/msrc/GroundTruth',str)
         im = imread(image_path)
         height, width, _ = im.shape
         gt_im = np.zeros((height,width))
-        for j in height:
-            for i in width:
-                val = color_map[im[j,i,:].to_bytes()]
+
+        for j in range(height):
+            for i in range(width):
+                val = color_map[tuple(im[j,i,:])]
                 gt_im[j,i] = val
-        gts.append(Image(name,gt_im))
+        gts.append(gt_im)
 
     return gts
     

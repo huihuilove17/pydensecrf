@@ -4,6 +4,7 @@ function to compute integral images
 
 import numpy as np
 from numba import njit
+from tqdm import tqdm
 
 @njit
 def computeInt(textons):
@@ -12,11 +13,11 @@ def computeInt(textons):
     Arguments:
         textons {list of np.array} -- list of images, of size (height,width,depth)
     """
-    height,width,depth = textons[0].shape
     lis = []
     # iterate through images
     for l in range(len(textons)):
         im = textons[l]
+        height, width, depth = im.shape
         ii = np.zeros((height,width,depth))
 
         # iterate at full resolution

@@ -15,7 +15,9 @@ import numpy as np
 import os 
 from numba import njit
 
-#texton_type = ['filterbank','color','location']
+
+texton_type = ['filterbank','color','location']
+
 
 def loadtextons(path,texton_type,subsample = 1):
     """loading all types of textons
@@ -28,24 +30,19 @@ def loadtextons(path,texton_type,subsample = 1):
     ntextons = len(texton_type) # types of textons
     texton_offset = np.zeros(ntextons)
     textons = []
-
+    l = 0
     # read in different types of textons
     for texton in texton_type:
         texton_path = os.path.join(path,'msrc_' + texton + '.npy')
-        dat = np.load(texton_path)
+        dat = np.load(texton_path) # list of np.array texton_map (height,width)
         textons.append(dat)
 
-    n_ims,height,width = textons[0].shape # texton_id is of type <n_ims,height,width>
-    
-    # calculate texton offset
-    for l in range(ntextons):
-        texton = textons[l] # of type <ntrain * height * width>
-        
         # for each image, find the possible max texton id
-        for id in range(n_ims):
-            tmp = np.max(texton[id])
+        for id in range(len(dat)):
+            tmp = np.max(dat[id])
             if texton_offset[l] < tmp:
                 texton_offset[l] = tmp + 1
+        l += 1
 
     '''
     if we have three types of textons, filterbank, color and location, each has classes 400, 10 and 20
@@ -54,29 +51,42 @@ def loadtextons(path,texton_type,subsample = 1):
     for i in range(1,ntextons):
         texton_offset[i] += texton_offset[i-1]
 
-    @njit
+    
+    # sampling 
+    
     def finalize(textons):
-        # combine all the textons together
-        ims_textons_combine = []
-        nh = (height-1)//subsample + 1
-        nw = (width-1)//subsample + 1
-        kk = texton_offset[-1]
+        """ using jit to speed up
+        
+        Arguments:
+            textons {list of list of np.array} -- [description]
+        
+        Returns:
+            [type] -- [description]
+        """
 
-        # for each image 
-        for l in range(n_ims):
-            res = np.zeros((int(nh),int(nw),int(kk)))
-            # for each type of textons
-            for k in range(ntextons):
-                tmp1 = textons[k]
-                tmp = tmp1[l]
+        # combine all the textons together
+        
+        ims_textons_combine = []
+        # iterate through each type of textons
+        for texton_id in range(ntextons):
+            for texton_map in textons[texton_id]:
+                # texton map is for single image 
+                height, width = texton_map.shape 
+
+                # subsampleing 
+                nh = (height-1)//subsample + 1
+                nw = (width-1)//subsample + 1
+                kk = texton_offset[-1]
+                res = np.zeros((int(nh),int(nw),int(kk)))
+
                 for j in range(height):
                     for i in range(width):
-                        if k == 0:
-                            res[int(j//subsample),int(i//subsample),int(tmp[j,i])] = 1
+                        if texton_id == 0:
+                            res[int(j//subsample),int(i//subsample),int(texton_map[j,i])] = 1
                         else:
-                             res[int(j//subsample),int(i//subsample),int(texton_offset[k-1] + tmp[j,i])] = 1
-
-            ims_textons_combine.append(res) # ims_textons_combine is a list
+                            res[int(j//subsample),int(i//subsample),int(texton_offset[texton_id-1] + texton_map[j,i])] = 1
+                
+                ims_textons_combine.append(res) # list of textons_combines for each image 
         
         return ims_textons_combine
     
@@ -86,10 +96,16 @@ def loadtextons(path,texton_type,subsample = 1):
 
 
 if __name__ == '__main__':
+
+    np_load_old = np.load
+    np.load = lambda *a,**k: np_load_old(*a, allow_pickle=True, **k)
+
     path = '/Users/huihuibullet/Documents/project/pydensecrf-1/data/texton/train'
     res = loadtextons(path,texton_type)
 
     print(res[0].shape)
+
+    np.load = np_load_old
 
     
 

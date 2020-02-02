@@ -40,7 +40,6 @@ class Texton(object):
         Returns:
             [type] -- [description]
         """
-        
         D = self.feature_.get_size()
         round = 0
         all_features = []
@@ -48,12 +47,14 @@ class Texton(object):
         covariance = np.zeros((D,D))
         cnt = 0
 
+        print('now compute features for training images')
         # itearte through training images
         for round in tqdm(range(len(images))):
             #print('processing training image %i'%round)
-            feature_response = self.feature_.evaluate_an_image(images[round]) # feature_size x height x width
-            height, width,_ = feature_response.shape
+            feature_response = self.feature_.evaluate_an_image(images[round]) # height x width x feature_size
+            height,width,_ = feature_response.shape
 
+            single_feature = []
             # iteratively computes mean and covariance
             for j in range(height):
                 for i in range(width):
@@ -62,8 +63,8 @@ class Texton(object):
                     delta = x - mean
                     mean += delta/cnt
                     covariance += delta.reshape((len(x),1)) * (x-mean)
-                    all_features.append(x)
-
+            
+            all_features.append(feature_response)
 
         covariance = covariance/cnt
         U, Lambda, _ = np.linalg.svd(covariance)
@@ -75,21 +76,24 @@ class Texton(object):
 
     def fit_(self,names,nTextons,samples_per_image):
 
+        print('start training kmeans')
         # loading training images
         ims = loadImages(names)
         height, width, _ = ims[0].shape
         ntrain = len(names)
 
         # compute mean and variance
-        all_features = self.computeFeature(ims)
+        all_features = self.computeFeature(ims) # list of feature response for each image, feature response of size (height,width,feature_size)
+        
+        all_features_lis = [ele[j,i,:] for ele in all_features for j in range(ele.shape[0]) for i in range(ele.shape[1])]
 
         # select portion of training data
-        sample_training = random.sample(range(0, len(all_features)), len(names)*samples_per_image)
+        sample_training = random.sample(range(0, len(all_features_lis)), len(names)*samples_per_image)
 
-        remains = [ele for ele in range(len(all_features)) if ele not in sample_training]
+        remains = [ele for ele in range(len(all_features_lis)) if ele not in sample_training]
                 
         # whitening
-        X_mean = np.array(all_features) - self.mean
+        X_mean = np.array(all_features_lis) - self.mean
         X_white = np.dot(X_mean,self.transformation.T)
 
         # clustering using sample X
@@ -104,7 +108,15 @@ class Texton(object):
         lis.sort(key=lambda x: x[0])
         trainTID = [ele[1] for ele in lis]
 
-        self.trainTID = np.array(trainTID).reshape((ntrain,height,width)) #by the order in the names
+        trainTID_final = []
+        num1 = num2 = 0
+        for l in range(len(all_features)):
+            height,width,_ = all_features[l].shape
+            num2 += height*width
+            trainTID_final.append(np.array(trainTID[num1:num2]).reshape(height,width))
+            num1 = num2
+
+        self.trainTID = trainTID_final #by the order in the names
         self.kmeans = kmeans
 
     def evaluate(self,names):
@@ -114,16 +126,17 @@ class Texton(object):
             testing_names{list of str} -- [list of names for testing images]
         """
         # loading test images
+        print('now evaluate test images!')
+
         ntest = len(names)
         ims = loadImages(names)
         test_all_features = []
-        height, width, _ = ims[0].shape
 
         # iterate through images
         for round in tqdm(range(len(ims))):
-            print('processing test image %i'%round)
             im = ims[round]
             feature_response = self.feature_.evaluate_an_image(im)            
+            height, width, _ = im.shape
 
             for j in range(height):
                 for i in range(width):
@@ -134,9 +147,17 @@ class Texton(object):
         test_all_features = np.array(test_all_features)
         test_all_features_white = np.dot(test_all_features-self.mean,self.transformation.T)
 
-        test_TID = self.kmeans.predict(test_all_features_white)
+        testTID = self.kmeans.predict(test_all_features_white)
 
-        self.testTID = test_TID.reshape(ntest,height,width)
+        testTID_final = []
+        num1 = num2 = 0
+        for l in range(ntest):
+            height,width,_ = ims[l].shape
+            num2 += height*width
+            testTID_final.append(np.array(testTID[num1:num2]).reshape(height,width))
+            num1 = num2
+       
+        self.testTID = testTID_final
  
 
     def saveTextons(self,saving_path,mode = 'train'):
