@@ -7,46 +7,152 @@ from feature.filterbank import FilterBank
 from feature.color import Color
 from feature.location import Location
 from feature.histogram import HoG
+from config import config
 
 
+ 
 if __name__ == '__main__':
 
-    # setting 
-    train_path = '/Users/huihuibullet/Documents/project/pydensecrf-1/data/Train.txt'
-    test_path  = '/Users/huihuibullet/Documents/project/pydensecrf-1/data/Test.txt'
-    save_path = '/Users/huihuibullet/Documents/project/pydensecrf-1/data/texton'
-    
-    # get training and testing names
+    # get names
     train_names = []
     test_names = []
+    valid_names = []
 
-    with open(train_path,'r') as fi:
+    with open(config['train_path'],'r') as fi:
         image_files = fi.readlines()
 
     train_names = [ele.strip('\n') for ele in image_files][:3]
 
-    with open(test_path,'r') as fi:
+    with open(config['test_path'],'r') as fi:
         image_files = fi.readlines()
 
     test_names = [ele.strip('\n') for ele in image_files][:3]
 
-    # training 
-    print('start training!')
-    feature = HoG()
-    nTextons = 400
-    
+    with open(config['valid_path'],'r') as fi:
+        image_files = fi.readlines()
+
+    valid_names = [ele.strip('\n') for ele in image_files][:3]
+
+    save_path = config['texton_path']
+
+    '''
+    #==================
+    #filterbank
+    #==================
+
+    print('start training filterbank!')
+    feature = FilterBank(config['kappa'])
     texton = Texton(feature)
-    texton.fit_(train_names,nTextons,200)
-    texton.saveTextons(save_path)   
-    print('finish training!')
+    texton.train_kmeans(train_names,config['filter_nTextons'],config['samples_per_image'],ifLAB=True)
+    print('finishing training filterbank')
+
     
+    # train 
+    print('start computing train images')
+    texton.evaluate(train_names,mode='train') 
+    texton.saveTextons(save_path,mode='train')
+    print('finish computing train images') 
+
+    # valid
+    print('start computing valid images')
+    texton.evaluate(valid_names,mode='valid') 
+    texton.saveTextons(save_path,mode='valid')
+    print('finish computing valid images') 
+
     
-    # testing
-    print('start testing') 
-    texton.evaluate(test_names)
+    # test
+    print('start computing test images')
+    texton.evaluate(test_names,mode='test') 
     texton.saveTextons(save_path,mode='test')
-    print('finish testing')
+    print('finish computing test images') 
 
+    #==================
+    #color
+    #==================
 
+    print('start training color!')
+    feature = Color()
+    texton = Texton(feature)
+    texton.train_kmeans(train_names,config['color_nTextons'],config['samples_per_image'],ifLAB=True)
+    print('finishing training color')
 
+    
+    # train 
+    print('start computing train images')
+    texton.evaluate(train_names,mode='train') 
+    texton.saveTextons(save_path,mode='train')
+    print('finish computing train images') 
+
+    # valid
+    print('start computing valid images')
+    texton.evaluate(valid_names,mode='valid') 
+    texton.saveTextons(save_path,mode='valid')
+    print('finish computing valid images') 
+
+    
+    # test
+    print('start computing test images')
+    texton.evaluate(test_names,mode='test') 
+    texton.saveTextons(save_path,mode='test')
+    print('finish computing test images') 
+
+    #==================
+    #location
+    #==================
+    # training 
+    
+    print('start training location!')
+    feature = Location() 
+    texton = Texton(feature)
+    texton.train_kmeans(train_names,config['location_nTextons'],config['samples_per_image'],ifLAB=True)
+    print('finishing training location')
+
+    
+    # train 
+    print('start computing train images')
+    texton.evaluate(train_names,mode='train') 
+    texton.saveTextons(save_path,mode='train')
+    print('finish computing train images') 
+
+    # valid
+    print('start computing valid images')
+    texton.evaluate(valid_names,mode='valid') 
+    texton.saveTextons(save_path,mode='valid')
+    print('finish computing valid images') 
+
+    
+    # test
+    print('start computing test images')
+    texton.evaluate(test_names,mode='test') 
+    texton.saveTextons(save_path,mode='test')
+    print('finish computing test images') 
+
+    '''
+    
+    #==================
+    # HoG
+    #==================
+    print('start training HoG!')
+    feature = HoG(config['level'])
+    texton = Texton(feature)
+    texton.train_kmeans(train_names,config['hog_nTextons'],config['samples_per_image'],ifLAB=True)
+    print('finishing training HoG')
+
+    # train 
+    print('start computing train images')
+    texton.evaluate(train_names,mode='train') 
+    texton.saveTextons(save_path,mode='train')
+    print('finish computing train images') 
+
+    # valid
+    print('start computing valid images')
+    texton.evaluate(valid_names,mode='valid') 
+    texton.saveTextons(save_path,mode='valid')
+    print('finish computing valid images') 
+
+    # test
+    print('start computing test images')
+    texton.evaluate(test_names,mode='test') 
+    texton.saveTextons(save_path,mode='test')
+    print('finish computing test images') 
 

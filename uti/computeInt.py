@@ -1,9 +1,8 @@
-'''
-function to compute integral images
-'''
-
 import numpy as np
 from numba import njit
+
+
+
 
 @njit
 def computeInt(textons):
@@ -12,11 +11,11 @@ def computeInt(textons):
     Arguments:
         textons {list of np.array} -- list of images, of size (height,width,depth)
     """
-    height,width,depth = textons[0].shape
     lis = []
     # iterate through images
     for l in range(len(textons)):
         im = textons[l]
+        height, width, depth = im.shape
         ii = np.zeros((height,width,depth))
 
         # iterate at full resolution
@@ -34,13 +33,3 @@ def computeInt(textons):
         lis.append(ii)
     return lis
 
-
-if __name__ == '__main__':
-    data = np.zeros([3,3,2])
-    data[:,:,0] = np.array([[1,0,1],[0,1,1],[1,1,1]])
-    data[:,:,1] = np.array([[1,0,0],[0,0,1],[0,1,0]])
-
-    res = computeInt([data])
-    print(res[0][:,:,0])
-    print(res[0][:,:,1])
-    

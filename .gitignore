@@ -1,0 +1,7 @@
+.DS_Store
+
+./data/ints/*.h5
+
+./data/texton/*.h5
+
+*.m
