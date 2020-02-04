@@ -1,10 +1,8 @@
-'''
-function to compute integral images
-'''
-
 import numpy as np
 from numba import njit
-from tqdm import tqdm
+
+
+
 
 @njit
 def computeInt(textons):
@@ -35,13 +33,3 @@ def computeInt(textons):
         lis.append(ii)
     return lis
 
-
-if __name__ == '__main__':
-    data = np.zeros([3,3,2])
-    data[:,:,0] = np.array([[1,0,1],[0,1,1],[1,1,1]])
-    data[:,:,1] = np.array([[1,0,0],[0,0,1],[0,1,0]])
-
-    res = computeInt([data])
-    print(res[0][:,:,0])
-    print(res[0][:,:,1])
-    

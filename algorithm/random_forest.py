@@ -8,11 +8,6 @@ import math
 from numba import njit
 from uti.computeInt import computeInt
 
-#=====================
-#helper functon
-#=====================
-
-            
 
 #=====================
 # class object 
@@ -28,19 +23,18 @@ class Node(object):
     Returns:
         [type] -- [description]
     """
-    def __init__(self,h=0,w=0,offset=0,t=0,depth=0):
-        self.left = None
-        self.right = None
-        self.thresh_ = None
-        self.class_ = None 
+    def __init__(self,h=0,w=0,offset=0,t=0,depth=0,isLeaf=False):
         self.h_ = h
         self.w_ = w
-        self.offset_ = offset
         self.t_ = t 
-        self.isLeaf_ = False
+        self.offset_ = offset
         self.depth_ = depth
-        
-        
+        self.isLeaf_ = isLeaf
+        self.thresh_ = None
+        self.class_ = None 
+        self.left = None
+        self.right = None
+    
     def value_at_pixel(self,ii_im,i,j):
         """evalute the feature response at position (i,j)
         
@@ -69,6 +63,7 @@ class Node(object):
 
         return ii_im[x1,y1,t] + ii_im[x2,y2,t] - ii_im[x1,y2,t] - ii_im[x2,y1,t]
 
+    
     # reset 
     def reset(self,feature):
         """reset all the parameters for the node
@@ -76,26 +71,13 @@ class Node(object):
         Arguments:
             feature {list} -- [h,w,offset,t]
         """
-        
         self.h_ = feature[0]
         self.w_ = feature[1]
         self.t_ = feature[3]
         self.offset_ = feature[2] 
 
-
-    def set_threshold(self,threshold):
-        self.thresh_ = threshold
+        
     
-    # take the most appearance as the class of the node
-    def set_class(self,id):
-        self.class_ = id
-
-    def set_depth(self,depth):
-        self.depth_ = depth
-
-    
-    
-
 class decision_tree(object):
     """class object decison tree. Function includes building a tree
     
@@ -116,7 +98,8 @@ class decision_tree(object):
 
 
     def computeBestThresh(self,values,labels):
-        """find the optimal threshold for the current node
+        """find the optimal threshold for the current node,split the 
+            node by max info gain
         
         Arguments:
             values {[type]} -- [description]
@@ -124,15 +107,14 @@ class decision_tree(object):
             node {[type]} -- [description]
         """
         candidates = np.randn(self.numThreshold) * np.std(values) + np.mean(values)
-        info_gain = np.ones(self.numThreshold) * -99999999 # should be replace by MIN_INT
+        info_gain = np.ones(self.numThreshold) * float('-inf')# should be replace by MIN_INT
         
         # compute info gain for each threshold
         # for left and right branch, calculate shannon entropy for each class seperately
         for i in range(self.numThreshold):
-            
+            gain = 0
             lid = np.where(values < candidates[i])[0] # id of left brance
             rid = np.where(values >= candidates[i])[0] # id of right brance
-            gain = 0
             ltmp = np.zeros(self.num_class)
             rtmp = np.zeros(self.num_class)
 
@@ -172,7 +154,6 @@ class decision_tree(object):
             node {Node class object} node [v,t]
             
         """
-        height, width, num_textons = ii_ims[0].shape
         
         # determine v = [h,w,offset], this specifies v
         w = np.random.uniform(self.min_recSize,self.max_recSIze)
@@ -207,63 +188,57 @@ class decision_tree(object):
             depth {int} -- current depth for the node
         """
         
-        # ending condition, reaching the leaf
-        if depth == self.maxDepth or len(np.unique(gt_ims)) == 1:
+        print('processing node %i'%self.numNodes)
+        
+        # leaf node
+        if depth >= self.maxDepth or len(np.unique(gt_ims)) == 1:
             # find the class that appear most
             labels = []
             for ele in training_samples:
                 im_id, cur_x, cur_y = ele[0],ele[1],ele[2]
                 labels.append(gt_ims[im_id][cur_x,cur_y])
-            
-            best_class = 0
-            best_cnt = float('-inf')
-            
-            for ele in set(labels):
-                cnt = labels.count(ele)
-                if cnt > best_cnt:
-                    best_class = ele
-                    best_cnt = cnt
-            
+            best_class = max(set(labels),key=labels.count)
+
+            # set the node
             node.class_ = best_class
             node.isLeaf_ = True
             node.depth_ = depth
             self.numNodes += 1
 
-            return node
-        
-        height, width, _ = ii_ims[0].shape
-        num_ims = len(ii_ims)
+        else:
+            bestScore = float('-inf')
+            bestThresh = float('-inf')
+            bestFeature = []
+            bestVals = []
 
-        bestScore = float('-inf')
-        bestFeature = []
-        bestVals = []
-        bestThresh = float('-inf')
+            # finding the best [v,t,theta]
+            # every node has multiple possible features
+            for i = 1:self.numFeature:
+                vals, labels, feature  = self.computeFeature(ii_ims,gt_ims,training_samples) # vals follows the order of training samples
+                thresh, score = self.computeBestThresh(vals,labels)
+                if score > bestScore:
+                    bestScore = score
+                    bestFeature = feature
+                    bestVals = vals
+                    bestThresh = thresh                
+            
+            # reset node parameters [v,t,theta]
+            node.reset(bestFeature)
+            self.numNodes += 1
 
-        # finding the best [v,t,theta]
-        for i = 1:self.numFeature:
-            vals, labels, feature  = self.computeFeature(ii_ims,gt_ims,training_samples) # vals follows the order of training samples
-            thresh, score = self.computeBestThresh(vals,labels)
-            if score > bestScore:
-                bestScore = score
-                bestFeature = feature
-                bestVals = vals
-                bestThresh = thresh                
-        
-        # reset node parameters [v,t,theta]
-        node.reset(bestFeature)
-        self.numNodes += 1
+            # do the splitting
+            left = training_samples[np.where(np.array(bestVals) <= bestThresh)[0]]
+            right = training_samples[np.where(np.array(bestVals) > bestThresh)[0]]
 
-        # do the splitting
-        left = training_samples[np.where(np.array(bestVals) <= bestThresh)[0]]
-        right = training_samples[np.where(np.array(bestVals) > bestThresh)[0]]
+            node.left = self.computeDepth(Node(),ii_ims,gt_ims,depth+1,left)
+            node.right= self.computeDepth(Node(),ii_ims,gt_ims,depth+1,right) 
 
-        node.left = self.computeDepth(Node(),ii_ims,gt_ims,depth+1,left)
-        node.right= self.computeDepth(Node(),ii_ims,gt_ims,depth+1,right) 
+        return node 
 
 #==================================================================================================
 
-    # main function to build a recursive tree
-    def train_fill(self,ii_ims,gt_ims,scaling):
+    # fit a decision tree
+    def fit_(self,ii_ims,gt_ims,scaling):
         """use portion data to train, use all data to fill
         
         Arguments:
@@ -273,39 +248,55 @@ class decision_tree(object):
         """
 
         # need to implement the scaling here !!!
-        train_samples = []
-        height,width,_ = ii_ims[0].shape
         #iterate through each image
-        for l in range(len(ii_ims)):
-            i = j = 0
-            while j < height:
-                while i < width:
-                    train_samples.append((l,j,i))
-                    j *= scaling
-                    i *= scaling
+        portion_train = []
+        all_train = []
 
-        self.root = self.computeDepth(Node(),ii_ims,gt_ims,0)
-        
+        for l in range(len(ii_ims)):
+            height, width, _ = ii_ims[l].shape
+            for j in range(height):
+                for i < range(width):
+                    jj = scaling * j
+                    ii = scaling * i
+                    all_train.append((l,i,j))
+                    if jj < height and ii < width:
+                        portion_train.append((l,ii,jj))
+                
+        # use portion of data to train (could use all data to train)
+        self.root = self.computeDepth(Node(),ii_ims,gt_ims,0,portion_train)
+
 
     # testing
     @njit
-    def evaluate(self,ii_ims,gt_ims):
+    def evaluate_at_image(self,ii_im,gt_im):
         
-        height, width, _ = ii_ims[0].shape
-        node = self.root
-
-        for l in range(len(ii_ims)):
-            for j in range(height):
-                for i in range(width):
-                    while node.
-                    
-
-
+        # calculate pixel accuracy P-ACC = 1/N * (sum_{i}^{N} \delta(yi,y_i))
+        height, width, _ = ii_im.shape
+        yhat = np.zeros((height,width))
+        for j in range(height):
+            for i in range(width):
+                node = self.root
+                while not node.isLeaf_:
+                    val = node.value_at_pixel(ii_im,i,j)
+                    if val <= node.thresh_:
+                        node = node.left
+                    else:
+                        node = node.right
                 
+                yhat[j,i] = node.class_
+        
 
+        diff = len(np.where(yhat,gt_im)[0])
+        return diff/(height*width), yhat
+        
+        
+    
 
 
 class random_forest(object):
     def __init__(self):
         pass
 
+
+if __name__ == '__main__':
+    

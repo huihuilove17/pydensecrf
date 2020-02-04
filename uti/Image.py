@@ -43,7 +43,7 @@ def init_msrc():
 
 
 
-def loadImages(names):
+def loadImages(names,ifLAB=False):
 
     """loading images
     
@@ -57,6 +57,9 @@ def loadImages(names):
     for ele in names:
         image_path = os.path.join('/Users/huihuibullet/Documents/project/pydensecrf-1/data/msrc/Images',ele)
         im = imread(image_path)
+        if ifLAB:
+            im = rgb2lab(im)
+
         res.append(im)
 
     return res
